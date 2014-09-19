@@ -29,6 +29,7 @@
 #include "tweetnacl.h"
 #include "tweetnacl.c"
 #include "crypto.h"
+#include "base64.c"
 #include <stdlib.h>
 #include <fcntl.h>
 
@@ -222,20 +223,13 @@ static char* get_printable_ciphertext(const unsigned char* key,
     return NULL;
   }
 
-  // current strategy -- use the crappy base64 encoding that 
-  // eggdrop provides. This will at most use 2x the space of the
-  // original.. i hope
+  // this is too long, but I want to make sure
+  // that I don't get a buffer overrun if something 
+  // weird happens
   print_bytes = nmalloc(plen*2+1);
   *(print_bytes+plen*2) = '\0';
-  int i = 0;
-  for(i = 0; i < plen; i++)
-    sprintf((print_bytes+i*2), "%0x", cipherbytes[i]);
 
-  /* this does not work! in the mean time we go with a hex encoding
-  int j = 0;
-  for(i = 0; i < plen; i++)
-    j += simple_sprintf((print_bytes+j),"%D", cipherbytes[i]);
-   */
+  base64_encode(cipherbytes, plen, (unsigned char*)print_bytes);
   
   return print_bytes;
 }
