@@ -227,13 +227,15 @@ static char* get_printable_ciphertext(const unsigned char* key,
   // original.. i hope
   print_bytes = nmalloc(plen*2+1);
   *(print_bytes+plen*2) = '\0';
-  int j = 0;
-  // this %D format string is an unpadded base64 encode
-  // and the return is the offset from the start of the buffer to
-  // the null terminator
   int i = 0;
   for(i = 0; i < plen; i++)
+    sprintf((print_bytes+i*2), "%0x", cipherbytes[i]);
+
+  /* this does not work! in the mean time we go with a hex encoding
+  int j = 0;
+  for(i = 0; i < plen; i++)
     j += simple_sprintf((print_bytes+j),"%D", cipherbytes[i]);
+   */
   
   return print_bytes;
 }
