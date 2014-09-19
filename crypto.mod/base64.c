@@ -68,7 +68,7 @@ void base64_encode(unsigned char *input, unsigned input_length, unsigned char *o
 		buff2[3] = buff1[2] & 0x3f;
 		for (j=0;j<(i+1);j++)
 		{
-			output[output_cnt++] = encodeCharacterTable[buff2[j]];
+			output[output_cnt++] = encodeCharacterTable[(unsigned char)buff2[j]];
 		}
 		while(i++<3)
 		{
@@ -97,7 +97,7 @@ void base64_decode(unsigned char *input, unsigned input_length, unsigned char *o
 		{
 			for (i=0;i!=4;i++)
 			{
-				buff2[i] = decodeCharacterTable[buff2[i]];
+				buff2[i] = decodeCharacterTable[(unsigned char)buff2[i]];
 			}
 			output[output_cnt++] = (char)((buff2[0] << 2) + ((buff2[1] & 0x30) >> 4));
 			output[output_cnt++] = (char)(((buff2[1] & 0xf) << 4) + ((buff2[2] & 0x3c) >> 2));
@@ -113,7 +113,7 @@ void base64_decode(unsigned char *input, unsigned input_length, unsigned char *o
 		}
 		for (j=0;j<4;j++)
 		{
-			buff2[j] = decodeCharacterTable[buff2[j]];
+			buff2[j] = decodeCharacterTable[(unsigned char)buff2[j]];
 		}
 		buff1[0] = (buff2[0] << 2) + ((buff2[1] & 0x30) >> 4);
 		buff1[1] = ((buff2[1] & 0xf) << 4) + ((buff2[2] & 0x3c) >> 2);

@@ -55,15 +55,17 @@ static void crypto_report(int idx, int details)
 }
 
 static cmd_t crypt_pubs[] = {
-  /* command  flags  function     tcl-name */
-  {"!salsa",  "",  pub_salsa,   NULL},
-  {NULL,      NULL,  NULL,        NULL}  /* Mark end. */
+  /* command  flags    function     tcl-name */
+  {"!salsa",    "",    pub_salsa,   NULL},
+  {"!salsab64", "",    pub_salsa64,   NULL},
+  {NULL,        NULL,  NULL,        NULL}  /* Mark end. */
 };
 
 static cmd_t crypt_msgs[] = {
-  /* command  flags  function     tcl-name */
-  {"!salsa",  "",   msg_salsa,   NULL},
-  {NULL,      NULL,  NULL,        NULL}  /* Mark end. */
+  /* command    flags  function     tcl-name */
+  {"!salsa",    "",    msg_salsa,   NULL},
+  {"!salsab64", "",    msg_salsa64, NULL},
+  {NULL,        NULL,  NULL,        NULL}  /* Mark end. */
 };
 
 static char *crypto_close()
@@ -136,7 +138,15 @@ static int pub_salsa(char *nick, char *host, char *hand, char *channel, char *te
   char return_message[MAX_MESSAGE];
   putlog(LOG_CMDS, channel, "%s@#%s salsa", nick, channel);
   egg_snprintf(return_message, MAX_MESSAGE,"PRIVMSG %s", channel);
-  return process_salsa(return_message,text);
+  return process_salsa(return_message,text,0);
+}
+
+static int pub_salsa64(char *nick, char *host, char *hand, char *channel, char *text)
+{
+  char return_message[MAX_MESSAGE];
+  putlog(LOG_CMDS, channel, "%s@#%s salsa64", nick, channel);
+  egg_snprintf(return_message, MAX_MESSAGE,"PRIVMSG %s", channel);
+  return process_salsa(return_message,text,B64_TEXT);
 }
 
 static int msg_salsa(char *nick, char *host, struct userrec *u, char *text)
@@ -144,12 +154,20 @@ static int msg_salsa(char *nick, char *host, struct userrec *u, char *text)
   char return_message[MAX_MESSAGE];
   putlog(LOG_CMDS, "*", "PM %s salsa", nick);
   egg_snprintf(return_message, MAX_MESSAGE,"PRIVMSG %s", nick);
-  return process_salsa(return_message,text);
+  return process_salsa(return_message,text,0);
 }
 
-static int process_salsa(const char* return_message, char* text)
+static int msg_salsa64(char *nick, char *host, struct userrec *u, char *text)
 {
-  char *ciphertext;
+  char return_message[MAX_MESSAGE];
+  putlog(LOG_CMDS, "*", "PM %s salsa64", nick);
+  egg_snprintf(return_message, MAX_MESSAGE,"PRIVMSG %s", nick);
+  return process_salsa(return_message,text,B64_TEXT);
+}
+
+static int process_salsa(const char* return_message, char* text, short flags)
+{
+  unsigned char *ciphertext;
   char *plaintext;
   int plen;
   char *key;
@@ -158,6 +176,7 @@ static int process_salsa(const char* return_message, char* text)
   int nlen;
   unsigned char key_bytes[crypto_stream_KEYBYTES];
   unsigned char nonce_bytes[crypto_stream_NONCEBYTES];
+  int i;
   if(parse_plaintext_arguments(text, &key, &klen, &nonce, &nlen, &plaintext, &plen) < 0)
   {
     dprintf(DP_HELP, "%s :!salsa key nonce plaintext\n", return_message);
@@ -186,11 +205,57 @@ static int process_salsa(const char* return_message, char* text)
   memcpy(&key_bytes, key, klen);
   memcpy(&nonce_bytes, nonce, nlen);
 
-  if((ciphertext = get_printable_ciphertext(key_bytes,nonce_bytes,(unsigned char*)plaintext,plen)) == NULL)
+  if(flags&B64_TEXT)
+  {
+    if(!(plen % 3))
+    {
+      dprintf(DP_HELP, "%s :base64 encoded text must be divisible by three\n", return_message);
+      return TCL_OK;
+    }
+    for(i = 0; i < plen; i++)
+    {
+      unsigned char z;
+      z = *((unsigned char *)plaintext+i); 
+      if(z == '+')
+        continue;
+      if(z >= '/' && z <= '9')
+        continue;
+      if(z >= 'A' && z <= 'Z')
+        continue;
+      if(z >= 'a' && z <= 'z')
+        continue;
+      if(z == '=' && plen - i < 3)
+        continue;
+      dprintf(DP_HELP, "%s :base64 encoded text contains invalid character \'%c\'\n", return_message, z);
+      return TCL_OK;
+    } 
+    unsigned char* tempstr = nmalloc(plen+1);
+    memcpy(tempstr,plaintext,plen); 
+    *(tempstr+plen) = '\0';
+    base64_decode(tempstr,plen,(unsigned char*)plaintext);
+    plen = strlen(plaintext);
+    nfree(tempstr);
+  }
+
+  if((ciphertext = get_ciphertext(key_bytes,nonce_bytes,(unsigned char*)plaintext,plen)) == NULL)
   {
     dprintf(DP_HELP, "%s :crypto fail! Contact CustaiCo\n", return_message);
     return TCL_OK;
   }
+
+  // check to see if we need to base64 convert the output
+  for(i=0; i < plen; i++)
+  {
+    if(!isprint(ciphertext[i]))
+    {
+      unsigned char* print_bytes = nmalloc(((plen*4)/3)+2);
+      base64_encode(ciphertext, plen, (unsigned char*)print_bytes);
+      nfree(ciphertext);
+      ciphertext = print_bytes;
+      break;
+    }
+  }
+  
   // TODO: length checking
   dprintf(DP_SERVER, "%s :%s\n", return_message, ciphertext);
 
@@ -200,7 +265,7 @@ static int process_salsa(const char* return_message, char* text)
 
 
 /*
- * this returns a pointer to a "printable" ciphertext string
+ * this returns a pointer to a ciphertext string
  * that is null terminated. It is the callers responcibility
  * to free the string after use. There are no promises between
  * the relation of the message and the length of the string 
@@ -208,30 +273,22 @@ static int process_salsa(const char* return_message, char* text)
  * 
  * if there is an error during encryption return is null
  */
-static char* get_printable_ciphertext(const unsigned char* key, 
+static unsigned char* get_ciphertext(const unsigned char* key, 
     const unsigned char* nonce, const unsigned char* plaintext, 
     int plen)
 {
   unsigned char *cipherbytes;
   char *print_bytes;
 
-  cipherbytes = nmalloc(plen);
+  cipherbytes = nmalloc(plen+1);
+  *(cipherbytes+plen) = '\0';
   if(crypto_stream_xor(cipherbytes,plaintext,plen,nonce,key))
   {
     putlog(LOG_MISC, "*", "*** Encryption failure!" );
     nfree(cipherbytes);
     return NULL;
   }
-
-  // this is too long, but I want to make sure
-  // that I don't get a buffer overrun if something 
-  // weird happens
-  print_bytes = nmalloc(plen*2+1);
-  *(print_bytes+plen*2) = '\0';
-
-  base64_encode(cipherbytes, plen, (unsigned char*)print_bytes);
-  
-  return print_bytes;
+  return cipherbytes;
 }
 
 static int parse_plaintext_arguments(char *text, char **key, int* klen, 
