@@ -157,7 +157,7 @@ static int process_salsa(const char* return_message, char* text)
   int nlen;
   unsigned char key_bytes[crypto_stream_KEYBYTES];
   unsigned char nonce_bytes[crypto_stream_NONCEBYTES];
-  if(parse_plaintext_arguments( text, &key, &klen, &nonce, &nlen, &plaintext, &plen ) < 0)
+  if(parse_plaintext_arguments(text, &key, &klen, &nonce, &nlen, &plaintext, &plen) < 0)
   {
     dprintf(DP_HELP, "%s :!salsa key nonce plaintext\n", return_message);
     return TCL_OK;
@@ -185,7 +185,7 @@ static int process_salsa(const char* return_message, char* text)
   memcpy(&key_bytes, key, klen);
   memcpy(&nonce_bytes, nonce, nlen);
 
-  if((ciphertext = get_printable_ciphertext(key_bytes,nonce_bytes,(unsigned char*)plaintext,plen)) == NULL )
+  if((ciphertext = get_printable_ciphertext(key_bytes,nonce_bytes,(unsigned char*)plaintext,plen)) == NULL)
   {
     dprintf(DP_HELP, "%s :crypto fail! Contact CustaiCo\n", return_message);
     return TCL_OK;
@@ -238,14 +238,14 @@ static char* get_printable_ciphertext(const unsigned char* key,
   return print_bytes;
 }
 
-static int parse_plaintext_arguments( char *text, char **key, int* klen, 
-    char** nonce, int* nlen, char** plaintext, int* plen ) 
+static int parse_plaintext_arguments(char *text, char **key, int* klen, 
+    char** nonce, int* nlen, char** plaintext, int* plen) 
 {
   char *temp;
 
   // grab the key
   *key = text;
-  if((temp = strchr(text, ' ' )) == NULL )
+  if((temp = strchr(text, ' ')) == NULL)
     return -1;
 
   *temp = '\0';
@@ -253,7 +253,7 @@ static int parse_plaintext_arguments( char *text, char **key, int* klen,
 
   // and the nonce
   *nonce = temp+1;
-  if((temp = strchr(*nonce, ' ' )) == NULL )
+  if((temp = strchr(*nonce, ' ')) == NULL)
     return -1;
 
   *temp = '\0';
