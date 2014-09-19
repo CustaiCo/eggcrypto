@@ -1,0 +1,5 @@
+# $Id: modinf 2004/05/27 01:30:12 wcc Exp $
+DESC:This is my mod there are many like it but this one is mine
+DESC:
+DESC:Normally you will want to bust out a rhyme
+DEPENDS:server channels irc
