@@ -233,7 +233,7 @@ static char* get_printable_ciphertext(const unsigned char* key,
   // the null terminator
   int i = 0;
   for(i = 0; i < plen; i++)
-    j = simple_sprintf((print_bytes+j),"%D", cipherbytes[i]);
+    j += simple_sprintf((print_bytes+j),"%D", cipherbytes[i]);
   
   return print_bytes;
 }
@@ -245,15 +245,17 @@ static int parse_plaintext_arguments( char *text, char **key, int* klen,
 
   // grab the key
   *key = text;
-  if((temp = strchr( text, ' ' )) == NULL )
+  if((temp = strchr(text, ' ' )) == NULL )
     return -1;
+
   *temp = '\0';
   *klen = temp-*key;
 
   // and the nonce
   *nonce = temp+1;
-  if((temp = strchr( text, ' ' )) == NULL )
+  if((temp = strchr(*nonce, ' ' )) == NULL )
     return -1;
+
   *temp = '\0';
   *nlen = temp-*key;
   
