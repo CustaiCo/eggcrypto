@@ -196,18 +196,6 @@ static int process_salsa(const char* return_message, char* text, short flags)
     return TCL_OK;
   }
 
-  if( sizeof(char) != sizeof(unsigned char) )
-  {
-    dprintf(DP_HELP, "%s char size, %d, unsigned %d\n", return_message, sizeof(char), sizeof(unsigned char));
-    return TCL_OK;
-  }
-
-  if( sizeof(char) != 1 )
-  {
-    dprintf(DP_HELP, "%s ah fuck, chars are bigger than 1", return_message);
-    return TCL_OK;
-  }
-
   // zero out these key and nonce buffers, since my initial implementation just 
   // directly takes the bytes of what you give it
   // otherwise the key/nonce are not well defined
@@ -250,9 +238,7 @@ static int process_salsa(const char* return_message, char* text, short flags)
 
   if(flags&HEX_TEXT) 
   {
-    putlog(LOG_MISC, "*", "hex decode starting length: %d", plen);
     unsigned char* tempstr = nmalloc((plen/2)+1);
-    //memcpy(tempstr,plaintext,plen); 
     for( i = 0; i < plen/2; i++ )
     {
       sscanf(plaintext+i*2, "%2hhx", tempstr+i);
@@ -299,6 +285,7 @@ static int process_salsa(const char* return_message, char* text, short flags)
   
   // TODO: length checking
   dprintf(DP_SERVER, "%s :%s\n", return_message, ciphertext);
+  free(ciphertext);
   return TCL_OK;
 }
 
@@ -342,7 +329,7 @@ static int parse_plaintext_arguments(char *text, char **key, int* klen,
     return -1;
 
   *temp = '\0';
-  *klen = (unsigned char* )temp-(unsigned char *)*key;
+  *klen = temp-*key;
 
   // and the nonce
   *nonce = temp+1;
