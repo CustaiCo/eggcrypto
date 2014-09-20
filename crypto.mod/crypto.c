@@ -57,7 +57,7 @@ static void crypto_report(int idx, int details)
 static cmd_t crypt_pubs[] = {
   /* command  flags    function     tcl-name */
   {"!salsa",    "",    pub_salsa,   NULL},
-  {"!salsab64", "",    pub_salsa64,   NULL},
+  {"!salsab64", "",    pub_salsa64, NULL},
   {NULL,        NULL,  NULL,        NULL}  /* Mark end. */
 };
 
@@ -260,9 +260,10 @@ static int process_salsa(const char* return_message, char* text, short flags)
     {
       unsigned char* print_bytes = nmalloc(((plen*4)/3)+5);
       plen = base64_encode(ciphertext, plen, print_bytes);
-      memcpy(ciphertext,print_bytes,plen);
-      *(ciphertext+plen) = '\0';
-      nfree(print_bytes);
+      *(print_bytes+plen) = '\0';
+      nfree(ciphertext);
+      ciphertext = print_bytes;
+      break;
     }
    }
 
@@ -285,7 +286,7 @@ static int process_salsa(const char* return_message, char* text, short flags)
   
   // TODO: length checking
   dprintf(DP_SERVER, "%s :%s\n", return_message, ciphertext);
-  free(ciphertext);
+  nfree(ciphertext);
   return TCL_OK;
 }
 
