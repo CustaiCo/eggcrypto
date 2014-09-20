@@ -120,7 +120,7 @@ char *crypto_start(Function *global_funcs)
 // since I have no way to tell tweetnacl
 // that my randomness failed, I just panic
 // if something goes bad
-void randombytes(u8* buf, u64 len)
+void randombytes(u8 * buf,u64 len)
 {
   int fd;
 
@@ -168,7 +168,7 @@ static int msg_salsa64(char *nick, char *host, struct userrec *u, char *text)
 static int process_salsa(const char* return_message, char* text, short flags)
 {
   unsigned char *ciphertext;
-  char *plaintext;
+  unsigned char *plaintext;
   int plen;
   char *key;
   int klen;
@@ -196,6 +196,18 @@ static int process_salsa(const char* return_message, char* text, short flags)
     return TCL_OK;
   }
 
+  if( sizeof(char) != sizeof(unsigned char) )
+  {
+    dprintf(DP_HELP, "%s char size, %d, unsigned %d\n", return_message, sizeof(char), sizeof(unsigned char));
+    return TCL_OK;
+  }
+
+  if( sizeof(char) != 1 )
+  {
+    dprintf(DP_HELP, "%s ah fuck, chars are bigger than 1", return_message);
+    return TCL_OK;
+  }
+
   // zero out these key and nonce buffers, since my initial implementation just 
   // directly takes the bytes of what you give it
   // otherwise the key/nonce are not well defined
@@ -207,9 +219,9 @@ static int process_salsa(const char* return_message, char* text, short flags)
 
   if(flags&B64_TEXT)
   {
-    if(!(plen % 3))
+    if(plen % 4)
     {
-      dprintf(DP_HELP, "%s :base64 encoded text must be divisible by three\n", return_message);
+      dprintf(DP_HELP, "%s :base64 encoded text must be divisible by four. Gave %d.\n", return_message, plen);
       return TCL_OK;
     }
     for(i = 0; i < plen; i++)
@@ -232,9 +244,22 @@ static int process_salsa(const char* return_message, char* text, short flags)
     unsigned char* tempstr = nmalloc(plen+1);
     memcpy(tempstr,plaintext,plen); 
     *(tempstr+plen) = '\0';
-    base64_decode(tempstr,plen,(unsigned char*)plaintext);
-    plen = strlen(plaintext);
+    plen = base64_decode(tempstr,plen,(unsigned char *)plaintext);
     nfree(tempstr);
+  }
+
+  if(flags&HEX_TEXT) 
+  {
+    putlog(LOG_MISC, "*", "hex decode starting length: %d", plen);
+    unsigned char* tempstr = nmalloc((plen/2)+1);
+    //memcpy(tempstr,plaintext,plen); 
+    for( i = 0; i < plen/2; i++ )
+    {
+      sscanf(plaintext+i*2, "%2hhx", tempstr+i);
+    }
+    memcpy(plaintext,tempstr,plen/2);
+    *(plaintext+plen/2) = '\0';
+    plen = plen /2;
   }
 
   if((ciphertext = get_ciphertext(key_bytes,nonce_bytes,(unsigned char*)plaintext,plen)) == NULL)
@@ -243,23 +268,37 @@ static int process_salsa(const char* return_message, char* text, short flags)
     return TCL_OK;
   }
 
-  // check to see if we need to base64 convert the output
   for(i=0; i < plen; i++)
   {
-    if(!isprint(ciphertext[i]))
+    if(!isprint(*(ciphertext+i)))
     {
-      unsigned char* print_bytes = nmalloc(((plen*4)/3)+2);
-      base64_encode(ciphertext, plen, (unsigned char*)print_bytes);
-      nfree(ciphertext);
-      ciphertext = print_bytes;
-      break;
+      unsigned char* print_bytes = nmalloc(((plen*4)/3)+5);
+      plen = base64_encode(ciphertext, plen, print_bytes);
+      memcpy(ciphertext,print_bytes,plen);
+      *(ciphertext+plen) = '\0';
+      nfree(print_bytes);
     }
-  }
+   }
+
+  /** I think i'll leave this in for future debugging or a hex mode
+   * char* outhex = nmalloc(plen*2);
+   * *(outhex+plen*2) = '\0';
+   * for( i = 0; i < plen; i++ )
+   * {
+   *  sprintf((outhex+i*2),"%02x", *(plaintext+i));
+   * }
+   * putlog(LOG_MISC, "*", "hex encoded plaintext %s", outhex );
+   * for( i = 0; i < plen; i++ )
+   * {
+   *  sprintf((outhex+i*2),"%02x", *(ciphertext+i));
+   * }
+   * putlog(LOG_MISC, "*", "hex encoded ciphertext %s", outhex );
+   * nfree( outhex );
+  */
+
   
   // TODO: length checking
   dprintf(DP_SERVER, "%s :%s\n", return_message, ciphertext);
-
-  nfree(ciphertext);
   return TCL_OK;
 }
 
@@ -278,10 +317,11 @@ static unsigned char* get_ciphertext(const unsigned char* key,
     int plen)
 {
   unsigned char *cipherbytes;
-  char *print_bytes;
 
   cipherbytes = nmalloc(plen+1);
   *(cipherbytes+plen) = '\0';
+  memset(cipherbytes,0,plen);
+  //if(crypto_stream(cipherbytes,plen,nonce,key))
   if(crypto_stream_xor(cipherbytes,plaintext,plen,nonce,key))
   {
     putlog(LOG_MISC, "*", "*** Encryption failure!" );
@@ -302,7 +342,7 @@ static int parse_plaintext_arguments(char *text, char **key, int* klen,
     return -1;
 
   *temp = '\0';
-  *klen = temp-*key;
+  *klen = (unsigned char* )temp-(unsigned char *)*key;
 
   // and the nonce
   *nonce = temp+1;
@@ -310,7 +350,7 @@ static int parse_plaintext_arguments(char *text, char **key, int* klen,
     return -1;
 
   *temp = '\0';
-  *nlen = temp-*key;
+  *nlen = temp-*nonce;
   
   // leftovers are the plaintext
   *plaintext = temp+1;

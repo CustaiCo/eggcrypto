@@ -26,6 +26,6 @@
  * result. Failure to do so will result in a buffer overrun.
  */
 
-void base64_encode(unsigned char *input, unsigned input_length, unsigned char *output);
+int base64_encode(unsigned char *input, unsigned input_length, unsigned char *output);
 
-void base64_decode(unsigned char *input, unsigned input_length, unsigned char *output);
+int base64_decode(unsigned char *input, unsigned input_length, unsigned char *output);

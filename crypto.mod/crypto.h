@@ -2,6 +2,7 @@
 
 // some defines for how we process the ciphertext
 #define B64_TEXT    0x0001
+#define HEX_TEXT    0x0002
 
 static void bind_crypto_commands();
 static int pub_salsa(char *, char *, char *, char *, char *);
