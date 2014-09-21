@@ -86,13 +86,21 @@ static uint64_t get_really_random(uint64_t max)
   {
     return 0;
   }
+    putlog(LOG_MISC, "*", "Making random max: %d", bitsneeded);
 
+  i = 0;
   while(max >> bitsneeded)
+  {
+    putlog(LOG_MISC, "*", "Moer bits! %d", bitsneeded);
     bitsneeded++;
+    if(bitsneeded > 64)
+      return 42;
+  }
   
   do
   {
     returnvalue = 0;
+    putlog(LOG_MISC, "*", "making random: start do");
 
     /* Grab some randomness. I don't need to free this
      * or allocate it  b/c it's actually just a 
@@ -113,7 +121,9 @@ static uint64_t get_really_random(uint64_t max)
     if(bitsneeded%8)
       returnvalue >>= (8 - (bitsneeded % 8));
 
-  } while(returnvalue <= max);
+    putlog(LOG_MISC, "*", "made random: %d", returnvalue);
+
+  } while(returnvalue >= max);
 
   return returnvalue;
 }
