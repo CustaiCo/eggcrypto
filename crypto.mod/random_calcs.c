@@ -36,11 +36,11 @@ static int pub_random_int(char *nick, char *host, char *hand, char *channel, cha
   return print_random_integer(return_message,text);
 }
 
-static int msg_random_int(char *nick, char *host, char *hand, char *channel, char *text)
+static int msg_random_int(char *nick, char *host, struct userrec *u, char *text)
 {
   char return_message[MAX_MESSAGE];
-  putlog(LOG_CMDS, channel, "%s@#%s randomint", nick, channel);
-  egg_snprintf(return_message, MAX_MESSAGE,"PRIVMSG %s", channel);
+  putlog(LOG_CMDS, "*", "%s randomint", nick);
+  egg_snprintf(return_message, MAX_MESSAGE,"PRIVMSG %s", nick);
   return print_random_integer(return_message,text);
 }
 
@@ -119,7 +119,7 @@ static uint64_t get_really_random(uint64_t max)
     if(bitsneeded%8)
       returnvalue >>= (8 - (bitsneeded % 8));
 
-  } while(returnvalue >= max);
+  } while(returnvalue > max);
 
   return returnvalue;
 }
