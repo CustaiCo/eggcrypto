@@ -38,6 +38,8 @@ static Function *global = NULL;
 static Function *irc_funcs = NULL;
 static Function *server_funcs = NULL; 
 
+#include "random_calcs.c"
+
 static int crypto_expmem()
 {
   int size = 0;
@@ -55,17 +57,19 @@ static void crypto_report(int idx, int details)
 }
 
 static cmd_t crypt_pubs[] = {
-  /* command  flags    function     tcl-name */
-  {"!salsa",    "",    pub_salsa,   NULL},
-  {"!salsab64", "",    pub_salsa64, NULL},
-  {NULL,        NULL,  NULL,        NULL}  /* Mark end. */
+  /* command     flags  function        tcl-name */
+  {"!salsa",     "",    pub_salsa,      NULL},
+  {"!salsab64",  "",    pub_salsa64,    NULL},
+  {"!randomint", "",    pub_random_int, NULL},
+  {NULL,         NULL,  NULL,           NULL}  /* Mark end. */
 };
 
 static cmd_t crypt_msgs[] = {
-  /* command    flags  function     tcl-name */
-  {"!salsa",    "",    msg_salsa,   NULL},
-  {"!salsab64", "",    msg_salsa64, NULL},
-  {NULL,        NULL,  NULL,        NULL}  /* Mark end. */
+  /* command    flags  function        tcl-name */
+  {"!salsa",    "",    msg_salsa,      NULL},
+  {"!salsab64", "",    msg_salsa64,    NULL},
+  {"!randomint","",    msg_random_int, NULL},
+  {NULL,        NULL,  NULL,           NULL}  /* Mark end. */
 };
 
 static char *crypto_close()
@@ -177,7 +181,7 @@ static int process_salsa(const char* return_message, char* text, short flags)
   unsigned char key_bytes[crypto_stream_KEYBYTES];
   unsigned char nonce_bytes[crypto_stream_NONCEBYTES];
   int i;
-  if(parse_plaintext_arguments(text, &key, &klen, &nonce, &nlen, &plaintext, &plen) < 0)
+  if(parse_plaintext_arguments(text, &key, &klen, &nonce, &nlen, (char **)&plaintext, &plen) < 0)
   {
     dprintf(DP_HELP, "%s :!salsa key nonce plaintext\n", return_message);
     return TCL_OK;
@@ -241,7 +245,7 @@ static int process_salsa(const char* return_message, char* text, short flags)
     unsigned char* tempstr = nmalloc((plen/2)+1);
     for( i = 0; i < plen/2; i++ )
     {
-      sscanf(plaintext+i*2, "%2hhx", tempstr+i);
+      sscanf((char *)plaintext+i*2, "%2hhx", tempstr+i);
     }
     memcpy(plaintext,tempstr,plen/2);
     *(plaintext+plen/2) = '\0';
