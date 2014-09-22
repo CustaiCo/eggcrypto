@@ -21,9 +21,9 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#include <stdint.h>
 #include <inttypes.h>
 #include <errno.h>
+#include <locale.h>
 #include "random_calcs.h"
 #include "tweetnacl.h"
 
@@ -45,12 +45,103 @@ static int msg_random_int(char *nick, char *host, struct userrec *u, char *text)
   return print_random_integer(return_message,text);
 }
 
+static int pub_dice(char *nick, char *host, char *hand, char *channel, char *text)
+{
+  char return_message[MAX_MESSAGE];
+  putlog(LOG_CMDS, channel, "%s@#%s dice", nick, channel);
+  egg_snprintf(return_message, MAX_MESSAGE,"PRIVMSG %s", channel);
+  return print_dice_roll(return_message,text);
+}
+
+static int msg_dice(char *nick, char *host, struct userrec *u, char *text)
+{
+  char return_message[MAX_MESSAGE];
+  putlog(LOG_CMDS, "*", "%s dice", nick);
+  egg_snprintf(return_message, MAX_MESSAGE,"PRIVMSG %s", nick);
+  return print_dice_roll(return_message,text);
+}
+
+/*
+ * eggdrop insists on using a stupid LC_NUMERIC locale
+ * even if the environment says to use something else
+ * these two helper functions temporarily fix things
+ * for outputing strigns
+ */
+static char* fix_locale()
+{
+  char *old;
+  char *save;
+  old = setlocale(LC_NUMERIC,NULL);
+  save = nstrdup(old);
+  if(save == NULL)
+    fatal("Out of memory", 0);
+  old = setlocale(LC_NUMERIC,"en_US.utf8");
+  return save;
+}
+
+static void unfix_locale(char* old)
+{
+  setlocale(LC_NUMERIC,old);
+  nfree(old);
+}
+
+static int print_dice_roll(const char* handle, const char* text)
+{
+  long number_rolls;
+  long dice_size;
+  char *end;
+  char *second;
+  uint64_t results = 0;
+
+  errno = 0;
+  number_rolls = strtol(text,&end,10);
+  if(errno)
+  {
+    char *msg = strerror(errno);
+    dprintf(DP_HELP, "%s :%s\n", handle, msg);
+    return TCL_OK;
+  }
+  if(text == end || end[0] == '\0' || (end[0] != 'D' && end[0] != 'd'))
+  {
+    dprintf(DP_HELP, "%s :Syntax !roll 3d7\n", handle);
+    return TCL_OK;
+  }
+  second = end+1;
+  errno = 0;
+  dice_size = strtol(second,&end,10);
+  if(errno)
+  {
+    char *msg = strerror(errno);
+    dprintf(DP_HELP, "%s :%s\n", handle, msg);
+    return TCL_OK;
+  }
+  if(second == end)
+  {
+    dprintf(DP_HELP, "%s :Syntax !roll 3d7\n", handle);
+    return TCL_OK;
+  }
+  if(dice_size < 1 || number_rolls < 0 || dice_size == LONG_MAX || number_rolls == LONG_MAX)
+  {
+    char *l = fix_locale();
+    dprintf(DP_HELP, "%s :natural numbers lower than %'ld, please\n", handle, LONG_MAX);
+    unfix_locale(l);
+    return TCL_OK;
+  }
+  while(number_rolls--)
+     results += get_really_random(dice_size-1) + 1;
+
+  char *l = fix_locale();
+  dprintf(DP_SERVER, "%s :the dice say %'" PRIu64 " \n", handle, results);
+  unfix_locale(l);
+  return TCL_OK;
+}
+
+
 static int print_random_integer(const char* handle, const char* text)
 {
   uint64_t maxnumber;
   uint64_t returnvalue;
   char *end;
-  char *random_digits;
 
   errno = 0;
   maxnumber = strtoull(text, &end, 0);
@@ -68,11 +159,9 @@ static int print_random_integer(const char* handle, const char* text)
   }
 
   returnvalue = get_really_random(maxnumber);
-  if(asprintf(&random_digits,"%" PRIu64, returnvalue) < 0)
-    fatal("bad things",0);
-
-  dprintf(DP_SERVER, "%s :%s\n", handle, random_digits);
-  nfree(random_digits);
+  char *l = fix_locale();
+  dprintf(DP_SERVER, "%s :%'" PRIu64 "\n", handle, returnvalue);
+  unfix_locale(l);
   
   return TCL_OK;
 }

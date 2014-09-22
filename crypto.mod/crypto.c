@@ -61,6 +61,7 @@ static cmd_t crypt_pubs[] = {
   {"!salsa",     "",    pub_salsa,      NULL},
   {"!salsab64",  "",    pub_salsa64,    NULL},
   {"!randomint", "",    pub_random_int, NULL},
+  {"!dice",      "",    pub_dice,       NULL},
   {NULL,         NULL,  NULL,           NULL}  /* Mark end. */
 };
 
@@ -69,6 +70,7 @@ static cmd_t crypt_msgs[] = {
   {"!salsa",    "",    msg_salsa,      NULL},
   {"!salsab64", "",    msg_salsa64,    NULL},
   {"!randomint","",    msg_random_int, NULL},
+  {"!dice",     "",    msg_dice,       NULL},
   {NULL,        NULL,  NULL,           NULL}  /* Mark end. */
 };
 
