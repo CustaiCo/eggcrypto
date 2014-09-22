@@ -50,6 +50,7 @@ static int print_random_integer(const char* handle, const char* text)
   uint64_t maxnumber;
   uint64_t returnvalue;
   char *end;
+  char *random_digits;
 
   errno = 0;
   maxnumber = strtoull(text, &end, 0);
@@ -67,7 +68,11 @@ static int print_random_integer(const char* handle, const char* text)
   }
 
   returnvalue = get_really_random(maxnumber);
-  dprintf(DP_SERVER, "%s :%'" PRIu64 "\n", handle, returnvalue);
+  if(asprintf(&random_digits,"%" PRIu64, returnvalue) < 0)
+    fatal("bad things",0);
+
+  dprintf(DP_SERVER, "%s :%s\n", handle, random_digits);
+  nfree(random_digits);
   
   return TCL_OK;
 }
@@ -84,6 +89,7 @@ static int print_random_integer(const char* handle, const char* text)
 static uint64_t get_really_random(uint64_t max) 
 {
   unsigned int bitsneeded = 0;
+  unsigned int bytesneeded = 0;
   unsigned char* randomness;
   uint64_t returnvalue;
   unsigned int i;
@@ -103,6 +109,8 @@ static uint64_t get_really_random(uint64_t max)
     if(bitsneeded == 64)
       break;
   }
+
+  bytesneeded = (bitsneeded / CHAR_BIT) + ((bitsneeded % CHAR_BIT) ? 1 : 0);
   
   do
   {
@@ -112,7 +120,7 @@ static uint64_t get_really_random(uint64_t max)
      * or allocate it  b/c it's actually just a 
      * pointer to a buffer maintained elsewhere
      */
-    randomness = get_randombytes((bitsneeded/8)+1);
+    randomness = get_randombytes(bytesneeded);
     // this acutally should never happen but if it does
     // i will log it and return a 'random number'
     if(randomness == NULL)
@@ -121,11 +129,11 @@ static uint64_t get_really_random(uint64_t max)
       return 42;
     }
 
-    for(i = 0; i<((bitsneeded/8)+1); i++)
-      returnvalue |= randomness[i] << i*8;
+    for(i = 0; i<bytesneeded; i++)
+      returnvalue |= ((uint64_t)randomness[i] << (uint64_t)(i*CHAR_BIT));
 
-    if(bitsneeded%8)
-      returnvalue >>= (8 - (bitsneeded % 8));
+    if(bitsneeded%CHAR_BIT)
+      returnvalue >>= (CHAR_BIT-(bitsneeded%CHAR_BIT));
 
   } while(returnvalue > max);
 
