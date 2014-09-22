@@ -22,6 +22,7 @@
  */
 
 #include <stdint.h>
+#include <inttypes.h>
 #include <errno.h>
 #include "random_calcs.h"
 #include "tweetnacl.h"
@@ -66,7 +67,7 @@ static int print_random_integer(const char* handle, const char* text)
   }
 
   returnvalue = get_really_random(maxnumber);
-  dprintf(DP_SERVER, "%s :%d\n", handle, returnvalue);
+  dprintf(DP_SERVER, "%s :%'" PRIu64 "\n", handle, returnvalue);
   
   return TCL_OK;
 }
@@ -85,7 +86,7 @@ static uint64_t get_really_random(uint64_t max)
   unsigned int bitsneeded = 0;
   unsigned char* randomness;
   uint64_t returnvalue;
-  int i;
+  unsigned int i;
 
   // this way I don't use any randomness if none is needed
   // and don't have to worry about wierd degenerate cases
@@ -121,7 +122,7 @@ static uint64_t get_really_random(uint64_t max)
     }
 
     for(i = 0; i<((bitsneeded/8)+1); i++)
-      returnvalue |= randomness[i] << i;
+      returnvalue |= randomness[i] << i*8;
 
     if(bitsneeded%8)
       returnvalue >>= (8 - (bitsneeded % 8));
