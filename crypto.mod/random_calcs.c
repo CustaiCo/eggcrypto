@@ -75,7 +75,7 @@ static char* fix_locale()
   save = nstrdup(old);
   if(save == NULL)
     fatal("Out of memory", 0);
-  old = setlocale(LC_NUMERIC,"en_US.utf8");
+  setlocale(LC_NUMERIC,"en_US.utf8");
   return save;
 }
 
@@ -104,6 +104,15 @@ static int print_dice_roll(const char* handle, const char* text)
   if(text == end || end[0] == '\0' || (end[0] != 'D' && end[0] != 'd'))
   {
     dprintf(DP_HELP, "%s :Syntax !roll 3d7\n", handle);
+    return TCL_OK;
+  }
+  // this is b/c if you ask for near LONG_MAX rolls, it 
+  // crushes the machine
+  if(number_rolls > (RANDOM_BUFFER_SIZE * 10))
+  {
+    char *l = fix_locale();
+    dprintf(DP_HELP, "%s :I will not roll more than %'d times. It's bad for my brain.\n", handle, RANDOM_BUFFER_SIZE *10 );
+    unfix_locale(l);
     return TCL_OK;
   }
   second = end+1;
@@ -247,7 +256,7 @@ static unsigned char* get_randombytes(unsigned int bytes_needed)
   if(available_bytes < 0)
     randombytes(key,crypto_stream_salsa20_KEYBYTES);
 
-  if(bytes_needed < available_bytes)
+  if((int)bytes_needed > available_bytes)
   {
     if(crypto_stream_salsa20(random_buffer, RANDOM_BUFFER_SIZE, 
             (unsigned char*) &nonce, key))
