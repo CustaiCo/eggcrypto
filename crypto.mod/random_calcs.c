@@ -48,13 +48,20 @@ static int print_random_integer(const char* handle, const char* text)
 {
   uint64_t maxnumber;
   uint64_t returnvalue;
+  char *end;
 
   errno = 0;
-  maxnumber = strtoull(text, NULL, 0);
+  maxnumber = strtoull(text, &end, 0);
   if(errno)
   {
     char *msg = strerror(errno);
     dprintf(DP_HELP, "%s :%s\n", handle, msg);
+    return TCL_OK;
+  }
+  // for some reason errno is not set if there are no numbers
+  if(text == end)
+  {
+    dprintf(DP_HELP, "%s :'%s' does not seem to be numeric\n", handle, text);
     return TCL_OK;
   }
 
