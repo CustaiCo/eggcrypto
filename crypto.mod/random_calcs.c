@@ -156,7 +156,7 @@ static unsigned char* get_randombytes(unsigned int bytes_needed)
   
   // this handles the initialization of the key
   if(available_bytes < 0)
-    randombytes((u8 *)&key,crypto_stream_salsa20_KEYBYTES);
+    randombytes(key,crypto_stream_salsa20_KEYBYTES);
 
   if(bytes_needed < available_bytes)
   {
