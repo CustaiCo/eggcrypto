@@ -62,6 +62,7 @@ static cmd_t crypt_pubs[] = {
   {"!salsab64",  "",    pub_salsa64,    NULL},
   {"!randomint", "",    pub_random_int, NULL},
   {"!dice",      "",    pub_dice,       NULL},
+  {"!roll",      "",    pub_dice,       NULL},
   {NULL,         NULL,  NULL,           NULL}  /* Mark end. */
 };
 
@@ -71,6 +72,7 @@ static cmd_t crypt_msgs[] = {
   {"!salsab64", "",    msg_salsa64,    NULL},
   {"!randomint","",    msg_random_int, NULL},
   {"!dice",     "",    msg_dice,       NULL},
+  {"!roll",     "",    msg_dice,       NULL},
   {NULL,        NULL,  NULL,           NULL}  /* Mark end. */
 };
 
@@ -91,6 +93,7 @@ static Function crypto_table[] = {
   (Function) crypto_close,
   (Function) crypto_expmem,
   (Function) crypto_report,
+  (Function) get_really_random,
 };
 
 static void bind_crypto_commands()
