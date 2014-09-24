@@ -195,11 +195,8 @@ static uint64_t get_really_random(uint64_t max)
   // this way I don't use any randomness if none is needed
   // and don't have to worry about wierd degenerate cases
   if(max==0)
-  {
     return 0;
-  }
 
-  i = 0;
   while(max >> bitsneeded)
   {
     bitsneeded++;
@@ -227,8 +224,12 @@ static uint64_t get_really_random(uint64_t max)
       return 42;
     }
 
-    for(i = 0; i<bytesneeded; i++)
+    i = bytesneeded;
+    do 
+    {
+      i--;
       returnvalue |= ((uint64_t)randomness[i] << (uint64_t)(i*CHAR_BIT));
+    } while(i);
 
     if(bitsneeded%CHAR_BIT)
       returnvalue >>= (CHAR_BIT-(bitsneeded%CHAR_BIT));
